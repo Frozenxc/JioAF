@@ -1,9 +1,13 @@
-# JIOAF
+# Jio AirFiber ODU Unlock and Firmware Guides
 
-Community documentation and model-specific files for selected Jio AirFiber IDU devices.
+Community-maintained model-specific guides for Jio AirFiber ODU devices (JODU51641, JODU51642, JODU52041, JODU52140, JODU52240, and JODU52540). This repository documents local access, firmware recovery and downgrade, ACS configuration, and companion-app/eSIM workflows. Here, “unlock” refers to documented ODU access and firmware procedures, not carrier or SIM unlocking.
 
-> [!WARNING]
-> Use these procedures only on hardware you own or are authorized to modify. Flashing an incorrect image or interrupting a firmware write can brick the device. Always verify the exact model before using a recovery or firmware package.
+> [!IMPORTANT]
+> Application credit: HONEY ([@H0NEYJI](https://t.me/H0NEYJI))
+>
+> Disclaimer: This project is provided for educational, authorized device-management, and legitimate research purposes only. Use it only on devices you own or are explicitly authorized to modify. Do not use this software or any related procedures to interfere with third-party systems, bypass controls, access unauthorized networks, or cause harm to people, property, or services. Always verify the exact model before flashing, and comply with all applicable local laws, manufacturer requirements, and service agreements. The maintainers provide this repository as-is without warranty and are not responsible for misuse, loss, or damage caused by improper use.
+>
+> Warning: Flashing an incorrect image or interrupting a firmware write can brick the device.
 
 ## Supported models
 
@@ -15,6 +19,10 @@ Community documentation and model-specific files for selected Jio AirFiber IDU d
 | JODU52140 | UART shell → post-boot setup → SSH → ACS/CWMP/heartbeat changes | [52140](docs/models/52140.md) |
 | JODU52240 | WebUI firmware update | [52240](docs/models/52240.md) |
 | JODU52540 | WebUI firmware update; UART fallback can restore WebUI; persistent ACS-off workflow | [52540](docs/models/52540.md) |
+
+## Android ODU companion app
+
+The Android app is reported to support nearby ODU discovery and eSIM/device-management features. Download the APK from [this external link](https://files.catbox.moe/e8181l.apk); the APK is not stored in this repository. See [the app guide](docs/odcpe-app.md) for setup, compatibility notes, and safe-use guidance.
 
 ## Repository layout
 
@@ -88,8 +96,8 @@ configs/acs-blocklist.hosts
 
 ## Firmware links retained from the original project
 
-- **51641:** https://drive.google.com/file/d/12aiM9swx37URDS4BOxx1izF-yRTebIoO/view?usp=sharing
-- **51642:** https://drive.google.com/file/d/1649-y1xJA-xr0-zs-nUCnJvTWKgdGR0U/view?usp=sharing
+- **51641:** https://mega.nz/file/fR9BnQ6B#WVnFp1jl30lwkedAZ0jBxuslY8dH4EQIwRldCAoyuxU
+- **51642:** https://mega.nz/file/qUUl3bRY#D0I3uPM_a_uxkVbo0f75bXPpgFsz15qc8Dqas_dxHRo
 - **52240:** https://gofile.io/d/O8tz9cfA
 - **52540:** https://gofile.io/d/lJ0PaRWO
 

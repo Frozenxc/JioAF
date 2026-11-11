@@ -1,0 +1,35 @@
+# Verification probe: prove both edits persisted through a full boot cycle.
+# Read-only except the rw mount needed to read the volume.
+
+V=1
+i=0
+while [ ! -e "/dev/ubi${V}_0" ] && [ $i -lt 80 ]; do sleep 0.2; i=$((i + 1)); done
+echo "ATTACH_WAIT_MS=$((i * 200))"
+D=/tmp/verify
+mkdir -p "$D"
+if ! mount -t ubifs -o rw,bulk_read "/dev/ubi${V}_0" "$D" 2>/dev/null; then
+  echo "RESULT:MOUNT_FAIL"
+  echo END
+  exit 0
+fi
+echo "RESULT:MOUNT_OK"
+echo "== versions =="
+for f in major_ver sw_ver build_info build_type hw_ver product_name vendor_ver; do
+  printf '%s=%s\n' "$f" "$(cat "$D/usr/etc/versions/$f" 2>/dev/null)"
+done
+echo "== versions dir =="
+ls -la "$D/usr/etc/versions" 2>&1 | head -18
+echo "== backups =="
+ls -l "$D/usr/etc/versions/major_ver.bak" "$D/etc/hosts.bak" 2>&1
+echo "== hostblock =="
+echo "blocked_count=$(grep -cE '^127\.0\.0\.1' "$D/etc/hosts" 2>/dev/null)"
+grep -E '^127\.0\.0\.1' "$D/etc/hosts" 2>/dev/null
+echo "== hostlist diff =="
+for h in acs.oss.jio.com dev.jiodeviceheartbeat.jio.com jiodeviceheartbeat-v6.jio.com jiodeviceheartbeat.jio.com fota.slv.kai.jphone.net fota.slv.kai.jiophone.net fota.jiophone.net fota.jio.com fsreg1.acs.oss.jio.com fsreg2.acs.oss.jio.com wfr.dinj.jfdca.net dinj.jfdca.net jpsit.jpdc.jiophone.net jpns.jpdc.jiophone.net jpds.jpdc.jiophone.net; do
+  grep -qE "[[:space:]]$h\$" "$D/etc/hosts" 2>/dev/null && echo "OK  $h" || echo "MISS $h"
+done
+echo "== umount =="
+sync
+cd /
+umount "$D" >/dev/null 2>&1 && echo UMOUNT_OK || echo UMOUNT_FAIL
+echo "END"

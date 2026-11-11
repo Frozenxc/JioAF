@@ -1,0 +1,17 @@
+# Firmware downloaded from the external links in README.md (see THIRD_PARTY.md)
+devices/51641/*.ffw
+devices/51642/*.ffw
+devices/52240/
+devices/52540/
+
+# Generated checksum manifests
+CHECKSUMS.sha256
+
+# macOS
+.DS_Store
+
+# watcher logs
+logs/
+
+# editor/tooling scratch
+.commandcode/

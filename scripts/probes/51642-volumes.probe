@@ -1,0 +1,40 @@
+# Probe 4: wait for ubi1 to finish attaching, then identify every volume and
+# find which one holds /etc/hosts + usr/etc/versions/major_ver.
+
+echo "== wait for ubi1 =="
+i=0
+while [ ! -e /dev/ubi1_0 ] && [ $i -lt 50 ]; do
+  sleep 0.2
+  i=$((i + 1))
+done
+if [ -e /dev/ubi1_0 ]; then echo "ubi1_0 ready after $((i * 2))00ms"; else echo "ubi1_0 NEVER appeared"; fi
+ls -l /dev/ubi1* 2>&1 | head -8
+echo "== names =="
+for v in /sys/class/ubi/ubi1_*/name; do
+  b=${v#/sys/class/ubi/}
+  echo "${b%%/*}=$(cat "$v" 2>/dev/null)"
+done
+echo "== ubinfo -d 1 =="
+ubinfo -d 1 2>&1 | grep -E 'Volumes count|Present volumes|Volume ID|Name:|Size:|State:|Data bytes'
+echo "== mounts =="
+mount 2>&1 | grep ubi1
+echo "== mount each volume =="
+for n in 0 1 2 3 4; do
+  d=/tmp/v$n
+  mkdir -p "$d" 2>/dev/null
+  if mount -t ubifs -o rw,bulk_read "/dev/ubi1_$n" "$d" 2>/dev/null; then
+    echo "--- ubi1_$n OK: $(ls "$d" 2>/dev/null | tr '\n' ' ')"
+    if [ -e "$d/etc/hosts" ]; then
+      echo "    HAVE_HOSTS=$d/etc/hosts"
+      head -8 "$d/etc/hosts" 2>&1
+    fi
+    if [ -e "$d/usr/etc/versions/major_ver" ]; then
+      echo "    HAVE_MAJOR_VER=$d/usr/etc/versions/major_ver -> $(cat "$d/usr/etc/versions/major_ver" 2>&1)"
+    fi
+    [ -d "$d/usr/etc/versions" ] && echo "    versions_dir: $(ls "$d/usr/etc/versions" 2>/dev/null | tr '\n' ' ')"
+    umount "$d" 2>&1
+  else
+    echo "--- ubi1_$n mount failed"
+  fi
+done
+echo "== END =="

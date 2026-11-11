@@ -1,0 +1,45 @@
+# Probe: find the firmware-update entry point. Read-only.
+# Mounts ubi1_0 (system rootfs) and ubi1_2 (cachefs) and lists the
+# plausible updater surfaces without recursive greps.
+
+i=0
+while [ ! -e /dev/ubi1_0 ] && [ $i -lt 80 ]; do sleep 0.2; i=$((i + 1)); done
+echo "ATTACH_WAIT_MS=$((i * 200))"
+S=/tmp/s
+C=/tmp/c
+mkdir -p "$S" "$C"
+mount -t ubifs -o rw,bulk_read /dev/ubi1_0 "$S" 2>/dev/null || { echo "RESULT:SYS_MOUNT_FAIL"; echo END; exit 0; }
+mount -t ubifs -o rw,bulk_read /dev/ubi1_2 "$C" 2>/dev/null && echo "RESULT:CACHE_MOUNT_OK" || echo "RESULT:CACHE_MOUNT_FAIL"
+
+echo "== cachefs/recovery =="
+ls -la "$C/recovery" 2>&1 | head -20
+echo "== fota mtd =="
+ls -l /dev/mtd24 /dev/mtdblock24 2>&1
+echo "== updater candidates (system) =="
+for d in usr/sbin sbin usr/bin bin usr/local/sbin; do
+  [ -d "$S/$d" ] || continue
+  ls "$S/$d" 2>/dev/null | grep -iE 'upd|fw|flash|upg|ota|image|burn' | sed "s|^|$d/|" | head -12
+done
+echo "== recovery updater candidates =="
+for d in usr/sbin sbin usr/bin; do
+  [ -d "/$d" ] || continue
+  ls "/$d" 2>/dev/null | grep -iE 'upd|fw|flash|upg|ota|image|burn' | sed "s|^|/$d/|" | head -12
+done
+echo "== www =="
+ls "$S/www" 2>&1 | head -25
+echo "== cgi =="
+ls "$S/www/cgi-bin" 2>&1 | head -25
+echo "== system initscripts =="
+ls "$S/etc/initscripts" 2>&1 | head -25
+echo "== updater hints in initscripts =="
+grep -rhoiE '(ffw|fota|fwupdate|upgrade_fw|recovery\.zip|ota\.zip)[^ ]*' "$S/etc/initscripts" 2>/dev/null | sort -u | head -15
+echo "== find_recovery_partitions.sh =="
+sed -n '1,40p' /etc/init.d/find_recovery_partitions.sh 2>&1
+echo "== listening ports =="
+cat /proc/net/tcp 2>/dev/null | awk 'NR>1{split($2,a,":"); print strtonum("0x" a[2])}' 2>/dev/null | sort -un | head -15
+echo "== umount =="
+sync
+cd /
+umount "$C" 2>/dev/null
+umount "$S" 2>/dev/null && echo UMOUNT_OK || echo UMOUNT_FAIL
+echo "END"

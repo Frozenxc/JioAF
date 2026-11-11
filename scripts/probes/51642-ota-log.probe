@@ -1,0 +1,26 @@
+# Probe: read the OTA install records, then the updater/WebUI surfaces.
+# Ordered by value so a truncated window still returns the important part.
+
+i=0
+while [ ! -e /dev/ubi1_0 ] && [ $i -lt 80 ]; do sleep 0.2; i=$((i + 1)); done
+S=/tmp/s
+C=/tmp/c
+mkdir -p "$S" "$C"
+mount -t ubifs -o rw,bulk_read /dev/ubi1_0 "$S" 2>/dev/null || { echo "RESULT:SYS_MOUNT_FAIL"; echo END; exit 0; }
+mount -t ubifs -o rw,bulk_read /dev/ubi1_2 "$C" 2>/dev/null || { echo "RESULT:CACHE_MOUNT_FAIL"; echo END; exit 0; }
+
+echo "== last_install =="
+cat "$C/recovery/last_install" 2>&1
+echo "== ota_status =="
+cat "$C/recovery/ota_status" 2>&1
+echo "== last_locale =="
+cat "$C/recovery/last_locale" 2>&1
+echo "== last_log tail =="
+tail -25 "$C/recovery/last_log" 2>&1
+echo "== last_log install lines =="
+grep -aiE 'install|package|ffw|version|script' "$C/recovery/last_log" 2>/dev/null | tail -12
+echo "== recovery dir extras =="
+ls -la "$C/recovery/command" "$C/recovery/block.map" "$C" 2>&1 | head -12
+echo "== initscripts =="
+ls "$S/etc/initscripts" 2>&1 | head -30
+echo "== END =="

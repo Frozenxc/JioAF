@@ -1,0 +1,39 @@
+# Post-debug state: did build_type=debug stick, and what did it unlock?
+
+i=0
+while [ ! -e /dev/ubi1_0 ] && [ $i -lt 80 ]; do sleep 0.2; i=$((i + 1)); done
+echo "ATTACH_WAIT_MS=$((i * 200))"
+S=/tmp/dbg
+mkdir -p "$S"
+OK=0
+for t in 1 2 3 4 5; do
+  mount -t ubifs -o rw,bulk_read /dev/ubi1_0 "$S" 2>/dev/null && { OK=1; break; }
+  sleep 0.3
+done
+if [ "$OK" = "1" ]; then
+  echo "RESULT:MOUNT_OK"
+  echo "build_type=$(cat "$S/usr/etc/versions/build_type" 2>&1)"
+  echo "major_ver=$(cat "$S/usr/etc/versions/major_ver" 2>&1)"
+  echo "blocked=$(grep -cE '^127\.0\.0\.1' "$S/etc/hosts" 2>/dev/null)"
+  echo "== versions dir =="
+  ls -la "$S/usr/etc/versions" 2>&1 | head -16
+  umount "$S" >/dev/null 2>&1 && echo UMOUNT_OK || echo UMOUNT_FAIL
+else
+  echo "RESULT:MOUNT_FAIL"
+fi
+
+echo "== cmdline =="
+cat /proc/cmdline 2>&1
+echo "== whoami/getprop =="
+getprop 2>/dev/null | grep -iE 'debug|secure|adb|build' | head -12
+echo "== ps =="
+ps 2>&1 | head -28
+echo "== adbd =="
+ps 2>&1 | grep -i adbd
+echo "== tcp listeners (raw) =="
+cat /proc/net/tcp 2>/dev/null | head -14
+echo "== tcp6 listeners (raw) =="
+cat /proc/net/tcp6 2>/dev/null | head -10
+echo "== mounts (all) =="
+mount 2>&1 | grep -vE 'proc|sys|devpts|cgroup|tmpfs|shm'
+echo "END"

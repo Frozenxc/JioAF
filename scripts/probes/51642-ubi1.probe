@@ -1,0 +1,32 @@
+# Probe 3: identify ubi1 volumes and read the real system-root config.
+# Read-only inspection, plus one rw mount of ubi1_0 to prove writability.
+
+echo "== volume names =="
+for v in /sys/class/ubi/ubi1_*/name; do echo "$v=$(cat $v 2>/dev/null)"; done
+echo "== ubinfo -a =="
+ubinfo -a 2>&1 | grep -viE 'eraseblock|maximum|bad|erase counter|i/o unit' | head -60
+echo "== already mounted ubi1 =="
+mount 2>&1 | grep ubi1
+echo "== init scripts naming ubi1 =="
+grep -rlE 'ubi1_|ubiattach' /etc/initscripts /etc/init.d 2>/dev/null | head -5
+echo "== mount ubi1_0 rw =="
+mkdir -p /tmp/v0
+mount -t ubifs -o rw,bulk_read /dev/ubi1_0 /tmp/v0 2>&1
+echo "mount_rc=$?"
+ls -la /tmp/v0 2>&1 | head -22
+echo "== versions dir =="
+ls -la /tmp/v0/usr/etc/versions 2>&1 | head -15
+echo "-- major_ver:"; cat /tmp/v0/usr/etc/versions/major_ver 2>&1
+echo "== etc =="
+ls -la /tmp/v0/etc 2>&1 | head -15
+echo "-- hosts:"; head -20 /tmp/v0/etc/hosts 2>&1
+echo "== writability =="
+for t in /tmp/v0 /tmp/v0/etc /tmp/v0/usr/etc/versions; do
+  [ -w "$t" ] && echo "W  $t" || echo "RO $t"
+done
+echo "== df =="
+df -h /tmp/v0 2>&1
+umount /tmp/v0 2>&1 && echo UMOUNT_OK || echo UMOUNT_FAIL
+echo "== dmesg =="
+dmesg 2>/dev/null | tail -6
+echo "== END =="

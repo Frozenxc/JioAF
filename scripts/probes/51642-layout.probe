@@ -1,0 +1,44 @@
+# Lean layout probe for a ~5 s ADB window.
+# Answers: which MTD/UBI volumes exist, where major_ver and hosts live,
+# and which paths are writable right now.
+
+echo "== id =="
+id 2>&1
+echo "== cmdline =="
+cat /proc/cmdline 2>&1
+echo "== mtd =="
+cat /proc/mtd 2>&1
+echo "== ubi nodes =="
+ls -l /dev/ubi* 2>&1
+echo "== ubi sysfs =="
+cat /sys/class/ubi/*/name 2>/dev/null | tr '\n' ' '; echo
+cat /sys/class/ubi/*/volumes_count 2>/dev/null | tr '\n' ' '; echo
+echo "== mounts =="
+mount 2>&1 | grep -iE 'ubi|overlay'
+echo "== df =="
+df -h 2>&1 | head -12
+echo "== / =="
+ls -la / 2>&1
+echo "== /etc =="
+ls -la /etc 2>&1 | head -20
+echo "== /usr/etc =="
+ls -ld /usr/etc 2>&1
+readlink -f /usr/etc 2>&1
+echo "== versions =="
+for p in /usr/etc/versions /etc/versions /systemrw/etc/versions; do
+  echo "-- $p"; ls -la "$p" 2>&1 | head -10
+  echo "mv=$(cat $p/major_ver 2>&1)"
+done
+echo "== systemrw =="
+ls -la /systemrw 2>&1 | head -15
+ls -la /systemrw/etc 2>&1 | head -20
+echo "== writability =="
+for t in / /etc /usr/etc /systemrw /systemrw/etc /tmp; do
+  if [ -w "$t" ]; then echo "W  $t"; else echo "RO $t"; fi
+done
+echo "== hosts =="
+ls -l /etc/hosts 2>&1
+head -15 /etc/hosts 2>&1
+echo "== props =="
+getprop 2>/dev/null | grep -iE 'model|version|build' | head -12
+echo "== END =="

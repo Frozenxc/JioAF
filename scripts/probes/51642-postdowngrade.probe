@@ -1,0 +1,52 @@
+# Post-downgrade restore on the freshly installed 31_00_00 rootfs:
+#   - build_type = debug        (persistent adb on normal boot)
+#   - ACS / FOTA / heartbeat block re-applied
+#   - reports the version triplet so we can see what the image wrote
+# Idempotent; backs up before writing; never touches major_ver.
+
+i=0
+while [ ! -e /dev/ubi1_0 ] && [ $i -lt 80 ]; do sleep 0.2; i=$((i + 1)); done
+echo "ATTACH_WAIT_MS=$((i * 200))"
+S=/tmp/post
+mkdir -p "$S"
+OK=0
+for t in 1 2 3 4 5 6; do
+  mount -t ubifs -o rw,bulk_read /dev/ubi1_0 "$S" 2>/dev/null && { OK=1; break; }
+  sleep 0.3
+done
+if [ "$OK" != "1" ]; then
+  echo "RESULT:MOUNT_FAIL"; ls -l /dev/ubi1* 2>&1 | head -5; dmesg 2>/dev/null | tail -5; echo END; exit 0
+fi
+echo "RESULT:MOUNT_OK"
+
+V="$S/usr/etc/versions"
+H="$S/etc/hosts"
+echo "== versions found =="
+for f in sw_ver scm_ver major_ver build_type; do printf '%s=%s\n' "$f" "$(cat "$V/$f" 2>/dev/null)"; done
+echo "== tree check =="
+ls -d "$S/usr/etc/versions" "$S/etc" 2>&1
+
+echo "== build_type -> debug =="
+[ -f "$V/build_type.bak" ] || cp "$V/build_type" "$V/build_type.bak"
+printf 'debug\n' > "$V/build_type"
+echo "build_type_now=$(cat "$V/build_type" 2>/dev/null)"
+
+echo "== hosts block =="
+if [ -f "$H" ]; then
+  [ -f "$H.bak" ] || cp "$H" "$H.bak"
+  ADDED=0
+  for h in acs.oss.jio.com dev.jiodeviceheartbeat.jio.com jiodeviceheartbeat-v6.jio.com jiodeviceheartbeat.jio.com fota.slv.kai.jphone.net fota.slv.kai.jiophone.net fota.jiophone.net fota.jio.com fsreg1.acs.oss.jio.com fsreg2.acs.oss.jio.com wfr.dinj.jfdca.net dinj.jfdca.net jpsit.jpdc.jiophone.net jpns.jpdc.jiophone.net jpds.jpdc.jiophone.net; do
+    grep -qE "[[:space:]]$h\$" "$H" 2>/dev/null || { echo "127.0.0.1 $h" >> "$H"; ADDED=$((ADDED + 1)); }
+  done
+  echo "HOSTS_ADDED=$ADDED"
+  echo "HOSTS_BLOCKED_TOTAL=$(grep -cE '^127\.0\.0\.1' "$H" 2>/dev/null)"
+else
+  echo "HOSTS_MISSING_AT=$H"
+  ls -l "$S/etc" 2>&1 | head -8
+fi
+
+sync
+cd /
+umount "$S" 2>&1 && echo UMOUNT_OK || echo UMOUNT_FAIL
+echo "DONE"
+echo "END"

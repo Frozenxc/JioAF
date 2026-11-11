@@ -1,0 +1,37 @@
+# Probe 2: find the real persistent system volume from the recoveryfs shell.
+# Read-only discovery first; one guarded ubiattach, no ubiformat, no erase.
+
+echo "== tools =="
+for t in ubiattach ubidetach ubinfo ubiformat mtdinfo flash_erase; do
+  printf '%s=' "$t"; command -v "$t" 2>/dev/null || echo MISSING
+done
+echo "== init hints =="
+grep -rhniE 'ubiattach|mount .*ubi|systemfs|major_ver|versions' /etc/initscripts /etc/init.d 2>/dev/null | head -25
+echo "== empty mountpoints =="
+for d in /mnt /data /persist /cache /overlay /system /var; do
+  echo "-- $d"; ls -la "$d" 2>&1 | head -8
+done
+echo "== mtd29 =="
+for f in name type size erasesize; do echo "$f=$(cat /sys/class/mtd/mtd29/$f 2>/dev/null)"; done
+cat /sys/class/mtd/mtd29/flags 2>/dev/null
+echo "== attach mtd29 -> ubi1 =="
+ubiattach -m 29 -d 1 2>&1
+echo "attach_rc=$?"
+ls -l /dev/ubi1* 2>&1
+ubinfo -d 1 2>&1 | head -25
+echo "== dmesg =="
+dmesg 2>/dev/null | tail -12
+echo "== try all ubi1 volumes (rw) =="
+mkdir -p /tmp/sys
+for v in /dev/ubi1_0 /dev/ubi1_1 /dev/ubi1_2; do
+  [ -b "$v" ] || continue
+  echo "-- mount $v"
+  if mount -t ubifs -o rw "$v" /tmp/sys 2>&1; then
+    ls -la /tmp/sys 2>&1 | head -12
+    for p in /tmp/sys/usr/etc/versions/major_ver /tmp/sys/etc/versions/major_ver /tmp/sys/etc/hosts; do
+      [ -e "$p" ] && { echo "FOUND $p:"; cat "$p" 2>&1 | head -12; }
+    done
+    umount /tmp/sys 2>&1
+  fi
+done
+echo "== END =="

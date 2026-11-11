@@ -1,15 +1,31 @@
+# ACS / FOTA / heartbeat hostnames blocked through /etc/hosts.
+#
+# Format: <ip> <hostname> [comment]   (parsers read the second field, so
+# trailing comments are safe). Applied by scripts/adb-apply-51642.sh and
+# scripts/probes/51642-postdowngrade.probe.
+#
+# Verified against public DNS on 2026-11-12. Entries marked "no record" have no
+# A/AAAA today: they block nothing but are kept in case DNS changes.
+
+# ACS (TR-069) and registration
 127.0.0.1 acs.oss.jio.com
-127.0.0.1 dev.jiodeviceheartbeat.jio.com
-127.0.0.1 jiodeviceheartbeat-v6.jio.com
+127.0.0.1 fsreg1.acs.oss.jio.com
+127.0.0.1 fsreg2.acs.oss.jio.com          # no record
+
+# Device heartbeat
 127.0.0.1 jiodeviceheartbeat.jio.com
+127.0.0.1 jiodeviceheartbeat-v6.jio.com
+127.0.0.1 dev.jiodeviceheartbeat.jio.com
+
+# FOTA
 127.0.0.1 fota.slv.kai.jphone.net
 127.0.0.1 fota.slv.kai.jiophone.net
-127.0.0.1 fota.jiophone.net
-127.0.0.1 fota.jio.com
-127.0.0.1 fsreg1.acs.oss.jio.com
-127.0.0.1 fsreg2.acs.oss.jio.com
+127.0.0.1 fota.jiophone.net               # no record
+127.0.0.1 fota.jio.com                    # no record
+
+# Firmware / provisioning endpoints
 127.0.0.1 wfr.dinj.jfdca.net
-127.0.0.1 dinj.jfdca.net
+127.0.0.1 dinj.jfdca.net                  # no record
 127.0.0.1 jpsit.jpdc.jiophone.net
-127.0.0.1 jpns.jpdc.jiophone.net
-127.0.0.1 jpds.jpdc.jiophone.net
+127.0.0.1 jpns.jpdc.jiophone.net          # no record
+127.0.0.1 jpds.jpdc.jiophone.net          # no record

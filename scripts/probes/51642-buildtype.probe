@@ -1,0 +1,48 @@
+# Flip build_type perf -> debug on ubi1_0, with evidence of what consumes it.
+# Mount retries so a boot-race miss does not waste the window.
+
+i=0
+while [ ! -e /dev/ubi1_0 ] && [ $i -lt 80 ]; do sleep 0.2; i=$((i + 1)); done
+echo "ATTACH_WAIT_MS=$((i * 200))"
+S=/tmp/s
+mkdir -p "$S"
+OK=0
+for t in 1 2 3 4 5 6; do
+  if mount -t ubifs -o rw,bulk_read /dev/ubi1_0 "$S" 2>/dev/null; then OK=1; break; fi
+  ERR=$(mount -t ubifs -o rw,bulk_read /dev/ubi1_0 "$S" 2>&1)
+  echo "MOUNT_TRY_$t: $ERR"
+  sleep 0.3
+done
+if [ "$OK" != "1" ]; then
+  echo "RESULT:MOUNT_FAIL"
+  echo "NODES:"; ls -l /dev/ubi1* 2>&1 | head -8
+  echo "MOUNTED:"; mount 2>&1 | grep -i ubi
+  echo "DMESG:"; dmesg 2>/dev/null | tail -8
+  echo "END"
+  exit 0
+fi
+echo "RESULT:MOUNT_OK"
+V="$S/usr/etc/versions"
+
+echo "== versions/timestamps =="
+ls -l "$V/build_type" "$V/major_ver" 2>&1
+echo "== build_type before =="
+cat "$V/build_type" 2>&1
+
+echo "== consumers: initscripts =="
+grep -rn 'build_type' "$S/etc/initscripts" 2>/dev/null | head -15
+echo "== consumers: init.d =="
+grep -rn 'build_type' "$S/etc/init.d" 2>/dev/null | head -10
+echo "== consumers: other etc =="
+grep -rn 'build_type' "$S/etc/default" "$S/etc/profile.d" 2>/dev/null | head -8
+
+echo "== write debug =="
+[ -f "$V/build_type.bak" ] || cp "$V/build_type" "$V/build_type.bak"
+printf 'debug\n' > "$V/build_type"
+echo "build_type after=$(cat "$V/build_type" 2>&1)"
+echo "backup=$(ls -l "$V/build_type.bak" 2>&1)"
+sync
+cd /
+umount "$S" 2>&1 && echo UMOUNT_OK || echo UMOUNT_FAIL
+echo "DONE"
+echo "END"
